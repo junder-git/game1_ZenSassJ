@@ -1,5 +1,7 @@
 # SpacetimeDB Game Setup with Python Quart
 
+(((Mimic the ts types with raw es6 js classes and inject them into the db instead)))
+
 This project contains a full SpacetimeDB setup with three containers:
 1. SpacetimeDB - The database and server platform
 2. Rust Server Module - The game logic written in Rust
