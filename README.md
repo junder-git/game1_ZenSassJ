@@ -3,7 +3,7 @@
 This project contains a full SpacetimeDB setup with three containers:
 1. SpacetimeDB - The database and server platform
 2. Rust Server Module - The game logic written in Rust
-3. TypeScript/Three.js Client - The 3D frontend client
+3. TypeScript/Three.js Client - The 3D frontend client with Nginx
 
 ## Project Structure
 
@@ -16,10 +16,10 @@ This project contains a full SpacetimeDB setup with three containers:
 │   └── src/
 │       └── lib.rs          # Server game logic
 ├── client/                  # TypeScript/Three.js client
-│   ├── Dockerfile          # Client container configuration
+│   ├── Dockerfile          # Client container using TypeScript container and Nginx
+│   ├── nginx.conf          # Nginx configuration for serving static files
 │   ├── package.json        # Node.js dependencies
 │   ├── tsconfig.json       # TypeScript configuration
-│   ├── webpack.config.js   # Webpack configuration
 │   └── src/
 │       ├── index.html      # Client HTML template
 │       └── index.ts        # Client game logic
@@ -54,8 +54,11 @@ docker-compose up --build
 ### Client Development (TypeScript/Three.js)
 
 1. Modify the TypeScript code in the `client/src` directory  
-2. The client container uses webpack dev server with hot reloading
-3. Changes will be reflected in the browser automatically
+2. Rebuild and restart the client container to see changes:
+   ```bash
+   docker-compose up -d --build client
+   ```
+3. For a more efficient development workflow, you may want to set up a local TypeScript environment with hot reloading for development, then use the Docker setup for production
 
 ## Game Controls
 

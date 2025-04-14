@@ -32,16 +32,14 @@ services:
       - spacetime-network
     restart: unless-stopped
 
-  # TypeScript/Three.js client
+  # TypeScript/Three.js client using dedicated TypeScript container and nginx
   client:
     build:
       context: ./client
       dockerfile: Dockerfile.client
     container_name: spacetime-client
-    volumes:
-      - ./client:/app
     ports:
-      - "8080:8080"  # Web client port
+      - "8080:80"  # Map host 8080 to nginx's port 80
     depends_on:
       - spacetimedb
       - rust-server
