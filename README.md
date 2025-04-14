@@ -1,6 +1,6 @@
 # SpacetimeDB Game Setup with Python Quart
 
-### WIP (((Mimic the ts types with raw es6 js classes and inject them into the db instead, allows for python endpoints to call on them when needed)))
+### WIP (((Mimic the ts types with raw es6 js classes and inject them into the db instead, allows for python quart methods to call on them when needed)))
 
 This project contains a full SpacetimeDB setup with three containers:
 1. SpacetimeDB - The database and server platform
