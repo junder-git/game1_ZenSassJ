@@ -1,0 +1,60 @@
+version: '3.8'
+
+services:
+  # SpacetimeDB container
+  spacetimedb:
+    image: clockworklabs/spacetime:latest
+    container_name: spacetimedb
+    ports:
+      - "3000:3000"  # Web interface
+      - "4000:4000"  # Client API port
+    volumes:
+      - spacetime-data:/var/lib/spacetime
+    command: start
+    networks:
+      - spacetime-network
+    restart: unless-stopped
+
+  # Rust server module
+  rust-server:
+    build:
+      context: ./server
+      dockerfile: Dockerfile.server
+    container_name: spacetime-rust-server
+    volumes:
+      - ./server:/app
+    depends_on:
+      - spacetimedb
+    environment:
+      - SPACETIME_HOST=spacetimedb
+      - SPACETIME_PORT=3000
+    networks:
+      - spacetime-network
+    restart: unless-stopped
+
+  # TypeScript/Three.js client
+  client:
+    build:
+      context: ./client
+      dockerfile: Dockerfile.client
+    container_name: spacetime-client
+    volumes:
+      - ./client:/app
+    ports:
+      - "8080:8080"  # Web client port
+    depends_on:
+      - spacetimedb
+      - rust-server
+    environment:
+      - SPACETIME_HOST=spacetimedb
+      - SPACETIME_PORT=4000
+    networks:
+      - spacetime-network
+    restart: unless-stopped
+
+networks:
+  spacetime-network:
+    driver: bridge
+
+volumes:
+  spacetime-data:

@@ -1,0 +1,23 @@
+FROM rust:1.75-slim
+
+WORKDIR /app
+
+# Install required dependencies for SpacetimeDB
+RUN apt-get update && apt-get install -y \
+    pkg-config \
+    libssl-dev \
+    curl \
+    git \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install SpacetimeDB CLI
+RUN cargo install spacetime
+
+# Copy your server code
+COPY . .
+
+# Build the project
+RUN cargo build --release
+
+# Command to run when container starts
+CMD ["cargo", "run", "--release"]

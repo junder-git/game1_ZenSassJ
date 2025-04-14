@@ -1,0 +1,19 @@
+FROM node:20-alpine
+
+WORKDIR /app
+
+# Install dependencies
+COPY package*.json ./
+RUN npm install
+
+# Copy client code
+COPY . .
+
+# Build the project if needed
+RUN npm run build
+
+# Expose the port the app runs on
+EXPOSE 8080
+
+# Command to run when container starts
+CMD ["npm", "run", "start"]
