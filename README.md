@@ -1,9 +1,9 @@
-# SpacetimeDB Three.js Game Setup
+# SpacetimeDB Game Setup with Python Quart
 
 This project contains a full SpacetimeDB setup with three containers:
 1. SpacetimeDB - The database and server platform
 2. Rust Server Module - The game logic written in Rust
-3. TypeScript/Three.js Client - The 3D frontend client with Nginx
+3. Python Quart Application - The web client and server intermediary
 
 ## Project Structure
 
@@ -15,14 +15,15 @@ This project contains a full SpacetimeDB setup with three containers:
 │   ├── Cargo.toml          # Rust dependencies and project configuration
 │   └── src/
 │       └── lib.rs          # Server game logic
-├── client/                  # TypeScript/Three.js client
-│   ├── Dockerfile          # Client container using TypeScript container and Nginx
-│   ├── nginx.conf          # Nginx configuration for serving static files
-│   ├── package.json        # Node.js dependencies
-│   ├── tsconfig.json       # TypeScript configuration
-│   └── src/
-│       ├── index.html      # Client HTML template
-│       └── index.ts        # Client game logic
+├── client/                  # Python Quart application
+│   ├── Dockerfile          # Client container configuration
+│   ├── app.py              # Main Quart application
+│   ├── requirements.txt    # Python dependencies
+│   ├── templates/          # HTML templates
+│   │   └── index.html      # Main page template
+│   ├── static/             # Static files
+│   │   └── main.css        # CSS styles
+│   └── models/             # 3D model files (optional)
 ```
 
 ## Getting Started
@@ -41,8 +42,24 @@ This project contains a full SpacetimeDB setup with three containers:
 docker-compose up --build
 ```
 
-3. Access the client in your browser at: http://localhost:8080
+3. Access the application in your browser at: http://localhost:8080
 4. Access the SpacetimeDB web interface at: http://localhost:3000
+
+### Working with 3D Models
+
+The Quart application is configured to serve 3D model files from the `client/models/` directory. You can place your .obj, .fbx, and other 3D model files there and reference them in your HTML/JavaScript code.
+
+To load a model:
+
+```javascript
+// Example using Three.js to load an OBJ model
+import { OBJLoader } from 'three/addons/loaders/OBJLoader.js';
+
+const loader = new OBJLoader();
+loader.load('/models/your-model.obj', (object) => {
+    scene.add(object);
+});
+```
 
 ## Development Workflow
 
@@ -51,14 +68,16 @@ docker-compose up --build
 1. Modify the Rust code in the `server/src` directory
 2. The container will automatically rebuild and reload when changes are detected
 
-### Client Development (TypeScript/Three.js)
+### Client Development (Python Quart)
 
-1. Modify the TypeScript code in the `client/src` directory  
-2. Rebuild and restart the client container to see changes:
-   ```bash
-   docker-compose up -d --build client
-   ```
-3. For a more efficient development workflow, you may want to set up a local TypeScript environment with hot reloading for development, then use the Docker setup for production
+1. Modify the Python code in the `client` directory
+2. The container mounts the client directory as a volume, so changes are reflected immediately
+3. Quart includes auto-reloading by default, so most changes will be applied without restarting
+
+## Game Controls
+
+- Press "C" or click the "Create Entity" button to create a new random entity
+- Use mouse to orbit the camera around the scene
 
 ## Game Controls
 

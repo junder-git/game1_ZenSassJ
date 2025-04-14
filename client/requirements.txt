@@ -1,0 +1,5 @@
+quart==0.18.4
+hypercorn==0.14.4
+websockets==11.0.3
+aiohttp==3.8.5
+python-dotenv==1.0.0
