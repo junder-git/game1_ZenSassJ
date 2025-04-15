@@ -3,12 +3,17 @@ services:
   spacetimedb:
     image: clockworklabs/spacetime
     pull_policy: always
-    command: start
+    container_name: spacetimedb
     ports:
-      - "3000:3000"
-    restart: "no"
+      - "3000:3000"  # Web interface
+    volumes:
+      - spacetime-data:/var/lib/spacetime
+    command: start
+    networks:
+      - spacetime-network
+    restart: unless-stopped
 
-# Rust server module - runs once and exits
+  # Rust server module - runs once and exits
   rust-server:
     build:
       context: ./game_server_module
@@ -16,6 +21,7 @@ services:
     container_name: spacetime-rust-server
     volumes:
       - ./game_server_module:/app
+      - shared-volume:/shared_volume  # Add shared volume for generated Python code
     depends_on:
       - spacetimedb
     environment:
@@ -24,8 +30,6 @@ services:
     networks:
       - spacetime-network
     restart: "no"  # Do not restart when finished
-    # Alternative approach if you need the container to stop after execution:
-    # command: sh -c "your_init_commands && exit 0"
 
   # Python Quart client application
   client:
@@ -35,6 +39,7 @@ services:
     container_name: spacetime-client
     volumes:
       - ./client_game_server:/app
+      - shared-volume:/app/autogen  # Mount the shared volume with generated Python code
     ports:
       - "8080:8080"  # Map host 8080 to Quart's port 8080
     depends_on:
@@ -42,7 +47,9 @@ services:
       - rust-server
     environment:
       - SPACETIME_HOST=spacetimedb
-      - SPACETIME_PORT=4000
+      - SPACETIME_PORT=3000
+      - MODULE_NAME=spacetime-game-server
+      - PYTHONPATH=/app:/app/autogen  # Include autogen in Python path
     networks:
       - spacetime-network
     restart: unless-stopped
@@ -53,3 +60,4 @@ networks:
 
 volumes:
   spacetime-data:
+  shared-volume:  # Create a shared volume for generated Python code

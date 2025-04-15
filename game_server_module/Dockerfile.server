@@ -22,5 +22,8 @@ COPY . .
 RUN spacetime init --lang rust . || echo "Module already initialized"
 RUN spacetime build
 
-# Command to run when container starts - connect to the SpacetimeDB instance
-CMD ["sh", "-c", "spacetime publish --host ${SPACETIME_HOST:-localhost} --port ${SPACETIME_PORT:-3000} --address /app"]
+# Generate Python client code
+RUN spacetime generate --lang python --out-dir /app/autogen_python
+
+# Command to run when container starts - connect to the SpacetimeDB instance and copy generated code
+CMD ["sh", "-c", "spacetime publish --host ${SPACETIME_HOST:-spacetimedb} --port ${SPACETIME_PORT:-3000} --address /app && cp -r /app/autogen_python /shared_volume/"]
