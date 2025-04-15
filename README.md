@@ -82,12 +82,17 @@ spacetimedb-project/
    cd spacetimedb-game
    ```
 
-2. Start the containers:
+2. Install Python dependencies (if developing locally):
+   ```bash
+   pip install -r client/requirements.txt
+   ```
+
+3. Start the containers:
    ```bash
    docker-compose up --build
    ```
 
-3. Access the application:
+4. Access the application:
    - Web interface: http://localhost:8080
    - SpacetimeDB interface: http://localhost:3000
 

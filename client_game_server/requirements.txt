@@ -1,4 +1,4 @@
 quart==0.18.4
 hypercorn==0.14.4
-spacetimedb-sdk==0.8.0
+spacetimedb-sdk==0.7.0
 python-dotenv==1.0.0
