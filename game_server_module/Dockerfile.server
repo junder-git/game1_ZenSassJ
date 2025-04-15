@@ -19,8 +19,8 @@ RUN cargo install spacetime
 COPY . .
 
 # Build and publish the module
-RUN spacetime init --lang rust . || echo "Module already initialized"
+RUN spacetime init --lang rust --name spacetime-game-server . || echo "Module already initialized"
 RUN spacetime build
 
-# Command to run when container starts - connect to the SpacetimeDB instance
-CMD ["sh", "-c", "spacetime publish --host ${SPACETIME_HOST:-localhost} --port ${SPACETIME_PORT:-3000} --address /app"]
+# Command to run when container starts - connect to the SpacetimeDB instance and publish with the correct module name
+CMD ["sh", "-c", "spacetime publish --host ${SPACETIME_HOST:-localhost} --port ${SPACETIME_PORT:-3000} --address /app --name spacetime-game-server"]
