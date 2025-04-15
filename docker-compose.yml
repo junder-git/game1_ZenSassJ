@@ -18,11 +18,11 @@ services:
   # Rust server module
   rust-server:
     build:
-      context: ./server
+      context: ./server_module
       dockerfile: Dockerfile.server
     container_name: spacetime-rust-server
     volumes:
-      - ./server:/app
+      - ./server_module:/app
     depends_on:
       - spacetimedb
     environment:
@@ -35,11 +35,11 @@ services:
   # Python Quart client application
   client:
     build:
-      context: ./client
+      context: ./client_game_server
       dockerfile: Dockerfile.client
     container_name: spacetime-client
     volumes:
-      - ./client:/app
+      - ./client_game_server:/app
     ports:
       - "8080:8080"  # Map host 8080 to Quart's port 8080
     depends_on:
