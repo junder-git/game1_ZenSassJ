@@ -18,8 +18,9 @@ RUN cargo install spacetime
 # Copy your server code
 COPY . .
 
-# Build the project
-RUN cargo build --release
+# Build and publish the module
+RUN spacetime init --lang rust . || echo "Module already initialized"
+RUN spacetime build
 
-# Command to run when container starts
-CMD ["cargo", "run", "--release"]
+# Command to run when container starts - connect to the SpacetimeDB instance
+CMD ["sh", "-c", "spacetime publish --host ${SPACETIME_HOST:-localhost} --port ${SPACETIME_PORT:-3000} --address /app"]
