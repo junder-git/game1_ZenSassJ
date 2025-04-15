@@ -1,19 +1,14 @@
 services:
   # SpacetimeDB container
   spacetimedb:
-    image: clockworklabs/spacetime:latest
-    container_name: spacetimedb
-    ports:
-      - "3000:3000"  # Web interface
-      - "4000:4000"  # Client API port
-    volumes:
-      - spacetime-data:/var/lib/spacetime
+    image: clockworklabs/spacetime
+    pull_policy: always
     command: start
-    networks:
-      - spacetime-network
-    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    restart: "no"
 
-  # Rust server module
+# Rust server module - runs once and exits
   rust-server:
     build:
       context: ./game_server_module
@@ -28,7 +23,9 @@ services:
       - SPACETIME_PORT=3000
     networks:
       - spacetime-network
-    restart: unless-stopped
+    restart: "no"  # Do not restart when finished
+    # Alternative approach if you need the container to stop after execution:
+    # command: sh -c "your_init_commands && exit 0"
 
   # Python Quart client application
   client:

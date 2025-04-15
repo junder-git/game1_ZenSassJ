@@ -1,12 +1,10 @@
 use spacetimedb::{spacetimedb, println, Identity, ReducerContext, SpacetimeType, Timestamp};
-use spacetimedb_sdk::{table, query, reducer}; // The SDK modules are imported differently in 0.7.0
-use serde::{Deserialize, Serialize};
 
 // Define your data model
-#[table]
-#[derive(Clone, Debug, PartialEq, SpacetimeType, Serialize, Deserialize)]
+#[spacetimedb::table]
+#[derive(Clone, Debug, PartialEq, SpacetimeType)]
 pub struct GameEntity {
-    #[primarykey]
+    #[spacetimedb::primarykey]
     pub id: u64,
     pub position_x: f32,
     pub position_y: f32,
@@ -16,7 +14,7 @@ pub struct GameEntity {
 }
 
 // Example reducer to create a new entity
-#[reducer]
+#[spacetimedb::reducer]
 pub fn create_entity(ctx: ReducerContext, position_x: f32, position_y: f32, position_z: f32) -> u64 {
     let entity_id = generate_id();
     
@@ -35,7 +33,7 @@ pub fn create_entity(ctx: ReducerContext, position_x: f32, position_y: f32, posi
 }
 
 // Example reducer to update entity position
-#[reducer]
+#[spacetimedb::reducer]
 pub fn update_entity_position(
     ctx: ReducerContext,
     entity_id: u64,
@@ -77,7 +75,7 @@ pub fn update_entity_position(
 }
 
 // Example query to get all entities
-#[query]
+#[spacetimedb::query]
 pub fn get_all_entities() -> Vec<GameEntity> {
     GameEntity::iter().collect()
 }
@@ -90,7 +88,7 @@ fn generate_id() -> u64 {
 }
 
 // Module initialization
-#[spacetimedb(init)]
+#[spacetimedb::init]
 pub fn init() {
     println!("Game server module initialized!");
 }
