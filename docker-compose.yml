@@ -18,11 +18,11 @@ services:
   # Rust server module
   rust-server:
     build:
-      context: ./server_module
+      context: ./game_server_module
       dockerfile: Dockerfile.server
     container_name: spacetime-rust-server
     volumes:
-      - ./server_module:/app
+      - ./game_server_module:/app
     depends_on:
       - spacetimedb
     environment:

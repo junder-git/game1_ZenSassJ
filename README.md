@@ -1,22 +1,41 @@
-# SpacetimeDB Game Setup with Python Quart
+# SpacetimeDB Game with Three.js and Python
 
-### WIP (((Check for python client library, otherwise: mimic the TS types with raw es6 js classes and inject them into the db instead via the ts client, allows for python quart methods to call on them when needed as js modules instead)))
+This repository contains a multiplayer game project built with SpacetimeDB, Python, and Three.js. The setup demonstrates how to create a real-time 3D environment where multiple clients can interact with shared game entities.
 
-This project contains a full SpacetimeDB setup with three containers:
-1. SpacetimeDB - The database and server platform
-2. Rust Server Module - The game logic written in Rust
-3. Python Quart Application - The web client and server intermediary
+## Project Overview
 
-## Project Structure
+The project consists of three main components:
+
+1. **SpacetimeDB**: The database and server platform for real-time multiplayer games
+2. **Rust Server Module**: The game logic written in Rust
+3. **Python Quart Client**: The web application serving the Three.js frontend
+
+## Architecture
 
 ```
-.
-├── docker-compose.yml       # Main Docker Compose configuration
-├── server/                  # Rust server module
-│   ├── Dockerfile          # Server container configuration 
-│   ├── Cargo.toml          # Rust dependencies and project configuration
+┌─────────────────┐         ┌─────────────────┐         ┌─────────────────┐
+│                 │         │                 │         │                 │
+│   SpacetimeDB   │◄────────┤  Rust Module    │◄────────┤  Python Client  │◄───── Web Browsers
+│   (Database)    │         │  (Game Logic)   │         │  (Web Server)   │
+│                 │         │                 │         │                 │
+└─────────────────┘         └─────────────────┘         └─────────────────┘
+```
+
+- **SpacetimeDB** handles data storage and synchronization
+- **Rust Module** defines game entities and logic
+- **Python Client** serves the web interface and connects to SpacetimeDB
+
+## Directory Structure
+
+```
+spacetimedb-project/
+├── docker-compose.yml             # Docker Compose configuration
+│
+├── server/                        # Rust server module
+│   ├── Dockerfile                 # Server container configuration 
+│   ├── Cargo.toml                 # Rust dependencies
 │   └── src/
-│       └── lib.rs                 # Server game logic (fixed)
+│       └── lib.rs                 # Server game logic
 │
 └── client/                        # Python Quart application
     ├── Dockerfile                 # Client container configuration
@@ -27,34 +46,158 @@ This project contains a full SpacetimeDB setup with three containers:
     ├── static/
     │   └── main.css               # CSS styles
     └── models/                    # Directory for 3D model files
-        └── .gitkeep               # Placeholder to ensure directory is created
+        └── .gitkeep               # Placeholder
 ```
 
-## Key Components:
+## Features
 
-### Docker Compose (docker-compose.yml)
-Orchestrates three containers:
-- SpacetimeDB
-- Rust server module
-- Python Quart application
+- **Real-time 3D Environment**: Built with Three.js
+- **Entity Creation and Manipulation**: Create and update 3D objects
+- **Multiplayer Support**: Changes are synchronized across all clients
+- **Persistent Game State**: Entities persist in the SpacetimeDB database
+- **Responsive UI**: With connection status and entity information
+- **3D Model Support**: Load custom 3D models (.obj, .fbx, etc.)
 
-### Rust Server Module (server/)
-Contains the game logic written in Rust with the correct SpacetimeDB API:
-- Uses fully qualified paths for spacetimedb macros (`#[spacetimedb::table]`, etc.)
-- Handles Timestamp serialization properly with `unix_timestamp_millis()`
-- Uses proper function calls instead of macros for database operations
-- Manages game entities and their positions
-- Provides reducers for creating and updating entities
-- Exposes queries for retrieving entity data
+## Technologies Used
 
-### Python Quart Application (client/)
-Handles the web frontend and acts as intermediary:
-- Serves HTML/CSS/JavaScript with Three.js for 3D visualization
-- Maintains WebSocket connections to browsers
-- Connects to SpacetimeDB via WebSocket API
-- Forwards entity updates in real-time
+- **SpacetimeDB**: For multiplayer state synchronization
+- **Rust**: For reliable server-side game logic
+- **Python**: For the web server and SpacetimeDB client
+- **Quart**: Asynchronous web framework for Python
+- **Three.js**: JavaScript 3D library
+- **Docker**: For containerization and deployment
 
-### No TypeScript Required
-- Three.js is loaded directly from CDN
-- JavaScript is embedded in the HTML template
-- No build/compilation step needed for frontend
+## Getting Started
+
+### Prerequisites
+
+- Docker and Docker Compose
+- Git
+
+### Installation
+
+1. Clone the repository:
+   ```bash
+   git clone https://github.com/yourusername/spacetimedb-game.git
+   cd spacetimedb-game
+   ```
+
+2. Start the containers:
+   ```bash
+   docker-compose up --build
+   ```
+
+3. Access the application:
+   - Web interface: http://localhost:8080
+   - SpacetimeDB interface: http://localhost:3000
+
+### Controls
+
+- Press "C" or click the "Create Entity" button to create a new random entity
+- Use mouse to orbit the camera around the scene
+- Entity information is displayed in the top-right panel
+
+## Development
+
+### Rust Server Module
+
+The Rust module defines the game entities and logic:
+
+```rust
+#[spacetimedb::table]
+#[derive(Clone, Debug, PartialEq, SpacetimeType)]
+pub struct GameEntity {
+    #[spacetimedb::primarykey]
+    pub id: u64,
+    pub position_x: f32,
+    pub position_y: f32,
+    pub position_z: f32,
+    pub owner: Identity,
+    pub created_at: Timestamp,
+}
+```
+
+Reducers handle entity creation and updates:
+
+```rust
+#[spacetimedb::reducer]
+pub fn create_entity(ctx: ReducerContext, position_x: f32, position_y: f32, position_z: f32) -> u64 {
+    // Create an entity...
+}
+```
+
+### Python Client
+
+The Python client uses the `spacetimedb-sdk` to connect to SpacetimeDB:
+
+```python
+client = SpacetimeDBClient()
+await client.connect(spacetime_url, MODULE_NAME)
+client.subscribe_table("GameEntity", on_entity_update)
+```
+
+### Three.js Frontend
+
+The Three.js frontend visualizes the entities in 3D space:
+
+```javascript
+function createEntityObject(entity) {
+    const geometry = new THREE.BoxGeometry(0.5, 0.5, 0.5);
+    const material = new THREE.MeshLambertMaterial({ color: entityColors[entityId] });
+    const mesh = new THREE.Mesh(geometry, material);
+    
+    mesh.position.set(
+        parseFloat(entity.position_x || 0),
+        parseFloat(entity.position_y || 0),
+        parseFloat(entity.position_z || 0)
+    );
+    
+    scene.add(mesh);
+    return mesh;
+}
+```
+
+## Extending the Project
+
+### Adding Custom 3D Models
+
+Place your .obj, .fbx, or other 3D model files in the `client/models/` directory and reference them in the frontend code:
+
+```javascript
+import { OBJLoader } from 'three/addons/loaders/OBJLoader.js';
+
+const loader = new OBJLoader();
+loader.load('/models/your-model.obj', (object) => {
+    scene.add(object);
+});
+```
+
+### Adding New Entity Types
+
+Extend the Rust module with new entity types:
+
+```rust
+#[spacetimedb::table]
+#[derive(Clone, Debug, PartialEq, SpacetimeType)]
+pub struct NewEntityType {
+    #[spacetimedb::primarykey]
+    pub id: u64,
+    // Additional fields...
+}
+```
+
+## Troubleshooting
+
+- **Connection Issues**: Check that SpacetimeDB is running and accessible
+- **Entity Creation Fails**: Verify that the Rust module is properly connected
+- **3D Models Not Loading**: Ensure the models are in the correct format and location
+
+## License
+
+[MIT License](LICENSE)
+
+## Acknowledgments
+
+- [SpacetimeDB](https://spacetimedb.com/) - Multiplayer game database
+- [Three.js](https://threejs.org/) - JavaScript 3D library
+- [Quart](https://pgjones.gitlab.io/quart/) - Asynchronous Python web framework

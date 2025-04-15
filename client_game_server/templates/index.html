@@ -25,6 +25,19 @@
             border-radius: 5px;
             z-index: 100;
         }
+        #entityInfo {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: rgba(0, 0, 0, 0.5);
+            color: white;
+            padding: 10px;
+            border-radius: 5px;
+            z-index: 100;
+            max-height: 300px;
+            overflow-y: auto;
+            width: 200px;
+        }
         button {
             background: #4CAF50;
             border: none;
@@ -45,6 +58,12 @@
         <button id="createEntityBtn">Create Entity</button>
         <div>Press 'C' to create entity</div>
         <div>Use mouse to orbit camera</div>
+        <div>Connected: <span id="connectionStatus">Connecting...</span></div>
+    </div>
+    
+    <div id="entityInfo">
+        <h3>Entities</h3>
+        <div id="entityList"></div>
     </div>
     
     <script type="importmap">
@@ -99,10 +118,26 @@
         
         // Entity management
         const entities = new Map();
+        const entityColors = {};
+        
+        function getRandomColor() {
+            const letters = '0123456789ABCDEF';
+            let color = '0x';
+            for (let i = 0; i < 6; i++) {
+                color += letters[Math.floor(Math.random() * 16)];
+            }
+            return parseInt(color, 16);
+        }
         
         function createEntityObject(entity) {
+            // Get or create a color for this entity
+            const entityId = String(entity.id);
+            if (!entityColors[entityId]) {
+                entityColors[entityId] = getRandomColor();
+            }
+            
             const geometry = new THREE.BoxGeometry(0.5, 0.5, 0.5);
-            const material = new THREE.MeshLambertMaterial({ color: 0x00ff00 });
+            const material = new THREE.MeshLambertMaterial({ color: entityColors[entityId] });
             const mesh = new THREE.Mesh(geometry, material);
             
             mesh.position.set(
@@ -112,6 +147,7 @@
             );
             
             scene.add(mesh);
+            updateEntityList();
             return mesh;
         }
         
@@ -121,19 +157,50 @@
                 parseFloat(entity.position_y || 0),
                 parseFloat(entity.position_z || 0)
             );
+            updateEntityList();
+        }
+        
+        function updateEntityList() {
+            const entityListElem = document.getElementById('entityList');
+            entityListElem.innerHTML = '';
+            
+            if (entities.size === 0) {
+                entityListElem.innerHTML = '<div>No entities yet</div>';
+                return;
+            }
+            
+            entities.forEach((mesh, id) => {
+                const entityDiv = document.createElement('div');
+                entityDiv.style.marginBottom = '5px';
+                entityDiv.style.borderLeft = `3px solid #${entityColors[id].toString(16).padStart(6, '0')}`;
+                entityDiv.style.paddingLeft = '5px';
+                
+                const pos = mesh.position;
+                entityDiv.innerHTML = `
+                    ID: ${id}<br>
+                    Pos: (${pos.x.toFixed(1)}, ${pos.y.toFixed(1)}, ${pos.z.toFixed(1)})
+                `;
+                entityListElem.appendChild(entityDiv);
+            });
         }
         
         // WebSocket connection to server
         let socket;
+        const connectionStatus = document.getElementById('connectionStatus');
         
         function connectWebSocket() {
             const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
             const wsUrl = `${protocol}//${window.location.host}/ws`;
             
+            connectionStatus.textContent = 'Connecting...';
+            connectionStatus.style.color = 'yellow';
+            
             socket = new WebSocket(wsUrl);
             
             socket.onopen = () => {
                 console.log('Connected to server');
+                connectionStatus.textContent = 'Connected';
+                connectionStatus.style.color = 'lightgreen';
             };
             
             socket.onmessage = (event) => {
@@ -164,6 +231,7 @@
                         if (entities.has(entityId)) {
                             scene.remove(entities.get(entityId));
                             entities.delete(entityId);
+                            updateEntityList();
                         }
                     }
                 }
@@ -171,12 +239,16 @@
             
             socket.onclose = () => {
                 console.log('Disconnected from server');
+                connectionStatus.textContent = 'Disconnected';
+                connectionStatus.style.color = 'red';
                 // Try to reconnect after a delay
                 setTimeout(connectWebSocket, 3000);
             };
             
             socket.onerror = (error) => {
                 console.error('WebSocket error:', error);
+                connectionStatus.textContent = 'Error';
+                connectionStatus.style.color = 'red';
             };
         }
         
