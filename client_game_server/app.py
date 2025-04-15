@@ -31,32 +31,22 @@ connected_to_spacetime = False
 # Entity data store
 entities = {}
 
-# Define a simple autogen package - this is what's missing in your code
-# This would typically be generated but we'll create a minimal one here
-class AutogenPackage:
-    @staticmethod
-    def GameEntity(data):
-        # Process the raw entity data
-        return data
-
 async def connect_to_spacetimedb():
     """Connect to SpacetimeDB using the SDK"""
     global client, connected_to_spacetime
 
     try:
-        # Create a SpacetimeDB client instance with the required autogen_package
-        client = SpacetimeDBClient(AutogenPackage)
+        # Create a SpacetimeDB client instance - NO autogen_package parameter for v0.5.0
+        client = SpacetimeDBClient()
         spacetime_url = f"ws://{SPACETIME_HOST}:{SPACETIME_PORT}"
-        logger.info(f"Connecting to SpacetimeDB at {spacetime_url}")
+        print(f"Connecting to SpacetimeDB at {spacetime_url}")
         
         # Connect to the module
-        logger.debug(f"Attempting to connect to module: {MODULE_NAME}")
         await client.connect(spacetime_url, MODULE_NAME)
         connected_to_spacetime = True
-        logger.info("Connected to SpacetimeDB")
+        print("Connected to SpacetimeDB")
         
         # Subscribe to the GameEntity table
-        logger.debug("Subscribing to GameEntity table")
         client.subscribe_table("GameEntity", on_entity_update)
         
         # Get all existing entities
