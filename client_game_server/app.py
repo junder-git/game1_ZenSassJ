@@ -1,8 +1,12 @@
 import os
 import json
 import asyncio
+import sys
 from quart import Quart, websocket, render_template, send_from_directory, request
 from spacetimedb_sdk.spacetimedb_async_client import SpacetimeDBAsyncClient
+
+# Import the module_bindings package
+import module_bindings
 
 # Create Quart app
 app = Quart(__name__)
@@ -30,8 +34,8 @@ async def connect_to_spacetimedb():
         print(f"Connecting to SpacetimeDB at {SPACETIME_HOST}:{SPACETIME_PORT}")
         spacetime_url = f"ws://{SPACETIME_HOST}:{SPACETIME_PORT}"
         
-        # Create the SpacetimeDBAsyncClient instance
-        client = SpacetimeDBAsyncClient(autogen_package=None)
+        # Create the SpacetimeDBAsyncClient instance with module bindings
+        client = SpacetimeDBAsyncClient(autogen_package=module_bindings)
         
         # Connect to the module
         await client.connect(spacetime_url, MODULE_NAME)
@@ -42,10 +46,10 @@ async def connect_to_spacetimedb():
         client.subscribe_table("GameEntity", on_entity_update)
         
         # Get all existing entities
-        existing_entities = await client.query("get_all_entities", [])
+        existing_entities = await module_bindings.get_all_entities(client)
         for entity in existing_entities:
-            entity_id = str(entity.get("id"))
-            entities[entity_id] = entity
+            entity_id = str(entity.id)
+            entities[entity_id] = entity.to_dict()
             
         print(f"Loaded {len(entities)} existing entities")
         
@@ -60,10 +64,19 @@ async def connect_to_spacetimedb():
 
 def on_entity_update(entity, operation):
     """Callback for entity updates from SpacetimeDB"""
-    entity_id = str(entity.get("id"))
+    # Convert to GameEntity instance if needed
+    if not isinstance(entity, module_bindings.GameEntity):
+        try:
+            entity = module_bindings.GameEntity.from_row(entity)
+        except Exception as e:
+            print(f"Error converting entity: {e}")
+            return
+    
+    entity_dict = entity.to_dict() if hasattr(entity, 'to_dict') else entity
+    entity_id = str(entity_dict.get('id'))
     
     if operation == "insert" or operation == "update":
-        entities[entity_id] = entity
+        entities[entity_id] = entity_dict
     elif operation == "delete":
         if entity_id in entities:
             del entities[entity_id]
@@ -72,7 +85,7 @@ def on_entity_update(entity, operation):
     asyncio.create_task(broadcast_to_clients({
         "type": "entity_update", 
         "data": {
-            **entity,
+            **entity_dict,
             "operation": operation
         }
     }))
@@ -114,13 +127,11 @@ async def ws():
                     # Forward create entity request to SpacetimeDB
                     position = message.get("position", {})
                     try:
-                        entity_id = await client.call_reducer(
-                            "create_entity", 
-                            [
-                                position.get("x", 0), 
-                                position.get("y", 0), 
-                                position.get("z", 0)
-                            ]
+                        entity_id = await module_bindings.create_entity(
+                            client,
+                            position.get("x", 0), 
+                            position.get("y", 0), 
+                            position.get("z", 0)
                         )
                         print(f"Created entity with ID: {entity_id}")
                     except Exception as e:
@@ -132,14 +143,12 @@ async def ws():
                     try:
                         entity_id = message.get("id")
                         position = message.get("position", {})
-                        result = await client.call_reducer(
-                            "update_entity_position",
-                            [
-                                entity_id,
-                                position.get("x", 0),
-                                position.get("y", 0),
-                                position.get("z", 0)
-                            ]
+                        result = await module_bindings.update_entity_position(
+                            client,
+                            entity_id,
+                            position.get("x", 0),
+                            position.get("y", 0),
+                            position.get("z", 0)
                         )
                         print(f"Updated entity {entity_id}: {result}")
                     except Exception as e:
