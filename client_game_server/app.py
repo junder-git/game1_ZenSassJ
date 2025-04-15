@@ -29,38 +29,46 @@ entities = {}
 async def connect_to_spacetimedb():
     """Connect to SpacetimeDB using the SDK"""
     global client, connected_to_spacetime
-
-    try:
-        print(f"Connecting to SpacetimeDB at {SPACETIME_HOST}:{SPACETIME_PORT}")
-        spacetime_url = f"ws://{SPACETIME_HOST}:{SPACETIME_PORT}"
-        
-        # Create the SpacetimeDBAsyncClient instance with module bindings
-        client = SpacetimeDBAsyncClient(autogen_package=module_bindings)
-        
-        # Connect to the module
-        await client.connect(spacetime_url, MODULE_NAME)
-        connected_to_spacetime = True
-        print(f"Connected to SpacetimeDB module: {MODULE_NAME}")
-        
-        # Subscribe to the GameEntity table
-        client.subscribe_table("GameEntity", on_entity_update)
-        
-        # Get all existing entities
-        existing_entities = await module_bindings.get_all_entities(client)
-        for entity in existing_entities:
-            entity_id = str(entity.id)
-            entities[entity_id] = entity.to_dict()
+    
+    retry_count = 0
+    max_retries = 10
+    retry_delay = 5  # seconds
+    
+    while retry_count < max_retries:
+        try:
+            print(f"Connecting to SpacetimeDB at {SPACETIME_HOST}:{SPACETIME_PORT} (Attempt {retry_count + 1}/{max_retries})")
+            spacetime_url = f"ws://{SPACETIME_HOST}:{SPACETIME_PORT}"
             
-        print(f"Loaded {len(entities)} existing entities")
-        
-    except Exception as e:
-        print(f"Error connecting to SpacetimeDB: {e}")
-        print(f"Error details: {type(e).__name__}, {str(e)}")
-        connected_to_spacetime = False
-        client = None
-        # Try to reconnect after a delay
-        await asyncio.sleep(5)
-        asyncio.create_task(connect_to_spacetimedb())
+            # Create the SpacetimeDBAsyncClient instance with module bindings
+            client = SpacetimeDBAsyncClient(autogen_package=module_bindings)
+            
+            # Connect to the module
+            await client.connect(spacetime_url, MODULE_NAME)
+            connected_to_spacetime = True
+            print(f"Connected to SpacetimeDB module: {MODULE_NAME}")
+            
+            # Subscribe to the GameEntity table
+            client.subscribe_table("GameEntity", on_entity_update)
+            
+            # Get all existing entities
+            existing_entities = await module_bindings.get_all_entities(client)
+            for entity in existing_entities:
+                entity_id = str(entity.id)
+                entities[entity_id] = entity.to_dict()
+                
+            print(f"Loaded {len(entities)} existing entities")
+            return  # Successfully connected, exit the function
+            
+        except Exception as e:
+            print(f"Error connecting to SpacetimeDB (Attempt {retry_count + 1}/{max_retries}): {e}")
+            print(f"Error details: {type(e).__name__}, {str(e)}")
+            connected_to_spacetime = False
+            client = None
+            retry_count += 1
+            # Wait before next retry
+            await asyncio.sleep(retry_delay)
+    
+    print("Maximum retry attempts reached. Could not connect to SpacetimeDB")
 
 def on_entity_update(entity, operation):
     """Callback for entity updates from SpacetimeDB"""

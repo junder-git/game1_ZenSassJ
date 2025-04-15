@@ -23,4 +23,5 @@ RUN spacetime init --lang rust . || echo "Module already initialized"
 RUN spacetime build
 
 # Command to run when container starts - connect to the SpacetimeDB instance
-CMD ["sh", "-c", "spacetime publish --host ${SPACETIME_HOST:-spacetimedb} --port ${SPACETIME_PORT:-3000} --address /app"]
+# Added retry logic with sleep between attempts
+CMD ["sh", "-c", "for i in $(seq 1 5); do echo \"Attempt $i to publish module...\"; spacetime publish --host ${SPACETIME_HOST:-spacetimedb} --port ${SPACETIME_PORT:-3000} --address /app && break || (echo \"Failed, retrying in 5s...\"; sleep 5); done"]
