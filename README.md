@@ -1,14 +1,20 @@
-# SpacetimeDB Project - Full Structure
+# SpacetimeDB Game Setup with Python Quart
 
-Below is the complete project structure for the SpacetimeDB application with a Python Quart frontend and Rust server module:
+### WIP (((Check for python client library, otherwise: mimic the TS types with raw es6 js classes and inject them into the db instead via the ts client, allows for python quart methods to call on them when needed as js modules instead)))
+
+This project contains a full SpacetimeDB setup with three containers:
+1. SpacetimeDB - The database and server platform
+2. Rust Server Module - The game logic written in Rust
+3. Python Quart Application - The web client and server intermediary
+
+## Project Structure
 
 ```
-spacetimedb-project/
-├── docker-compose.yml             # Main Docker Compose configuration
-│
-├── server/                        # Rust server module
-│   ├── Dockerfile                 # Server container configuration 
-│   ├── Cargo.toml                 # Rust dependencies (fixed)
+.
+├── docker-compose.yml       # Main Docker Compose configuration
+├── server/                  # Rust server module
+│   ├── Dockerfile          # Server container configuration 
+│   ├── Cargo.toml          # Rust dependencies and project configuration
 │   └── src/
 │       └── lib.rs                 # Server game logic (fixed)
 │
