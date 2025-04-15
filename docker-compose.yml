@@ -6,20 +6,13 @@ services:
     image: clockworklabs/spacetime
     pull_policy: always
     container_name: spacetimedb
+    hostname: spacetimedb
     ports:
       - "3000:3000"  # Web interface
     volumes:
       - spacetime-data:/var/lib/spacetime
     command: start
-    networks:
-      - default
     restart: unless-stopped
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:3000/health"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-      start_period: 10s
 
   # Rust server module - runs once and exits
   rust-server:
@@ -31,13 +24,10 @@ services:
       - ./game_server_module:/app
       - shared-volume:/shared_volume  # Add shared volume for generated Python code
     depends_on:
-      spacetimedb:
-        condition: service_healthy
+      - spacetimedb
     environment:
       - SPACETIME_HOST=spacetimedb
       - SPACETIME_PORT=3000
-    networks:
-      - default
     restart: on-failure:3  # Try up to 3 times
 
   # Python Quart client application
@@ -59,8 +49,6 @@ services:
       - SPACETIME_PORT=3000
       - MODULE_NAME=spacetime-game-server
       - PYTHONPATH=/app:/app/autogen  # Include autogen in Python path
-    networks:
-      - default
     restart: unless-stopped
 
 volumes:

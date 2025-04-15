@@ -15,6 +15,7 @@ app = Quart(__name__)
 SPACETIME_HOST = os.environ.get("SPACETIME_HOST", "spacetimedb")
 SPACETIME_PORT = os.environ.get("SPACETIME_PORT", "3000")
 MODULE_NAME = os.environ.get("MODULE_NAME", "spacetime-game-server")
+AUTH_TOKEN = os.environ.get("AUTH_TOKEN", "")  # Add this for authentication
 
 # Store for active websocket connections
 active_connections = set()
@@ -22,53 +23,33 @@ active_connections = set()
 # SpacetimeDB client
 client = None
 connected_to_spacetime = False
+connection_task = None
 
 # Entity data store
 entities = {}
 
-async def connect_to_spacetimedb():
-    """Connect to SpacetimeDB using the SDK"""
-    global client, connected_to_spacetime
+async def on_connect():
+    """Callback for when connection is established"""
+    global connected_to_spacetime
+    print(f"Connected to SpacetimeDB module: {MODULE_NAME}")
+    connected_to_spacetime = True
     
-    retry_count = 0
-    max_retries = 10
-    retry_delay = 5  # seconds
-    
-    while retry_count < max_retries:
-        try:
-            print(f"Connecting to SpacetimeDB at {SPACETIME_HOST}:{SPACETIME_PORT} (Attempt {retry_count + 1}/{max_retries})")
-            spacetime_url = f"ws://{SPACETIME_HOST}:{SPACETIME_PORT}"
+    try:
+        # Get all existing entities
+        existing_entities = await module_bindings.get_all_entities(client)
+        for entity in existing_entities:
+            entity_id = str(entity.id)
+            entities[entity_id] = entity.to_dict()
             
-            # Create the SpacetimeDBAsyncClient instance with module bindings
-            client = SpacetimeDBAsyncClient(autogen_package=module_bindings)
-            
-            # Connect to the module
-            await client.connect(spacetime_url, MODULE_NAME)
-            connected_to_spacetime = True
-            print(f"Connected to SpacetimeDB module: {MODULE_NAME}")
-            
-            # Subscribe to the GameEntity table
-            client.subscribe_table("GameEntity", on_entity_update)
-            
-            # Get all existing entities
-            existing_entities = await module_bindings.get_all_entities(client)
-            for entity in existing_entities:
-                entity_id = str(entity.id)
-                entities[entity_id] = entity.to_dict()
-                
-            print(f"Loaded {len(entities)} existing entities")
-            return  # Successfully connected, exit the function
-            
-        except Exception as e:
-            print(f"Error connecting to SpacetimeDB (Attempt {retry_count + 1}/{max_retries}): {e}")
-            print(f"Error details: {type(e).__name__}, {str(e)}")
-            connected_to_spacetime = False
-            client = None
-            retry_count += 1
-            # Wait before next retry
-            await asyncio.sleep(retry_delay)
-    
-    print("Maximum retry attempts reached. Could not connect to SpacetimeDB")
+        print(f"Loaded {len(entities)} existing entities")
+        
+        # Notify all clients about the connection status
+        await broadcast_to_clients({
+            "type": "connection_status",
+            "connected": True
+        })
+    except Exception as e:
+        print(f"Error in on_connect: {e}")
 
 def on_entity_update(entity, operation):
     """Callback for entity updates from SpacetimeDB"""
@@ -98,6 +79,60 @@ def on_entity_update(entity, operation):
         }
     }))
 
+async def connect_to_spacetimedb():
+    """Connect to SpacetimeDB using the run method"""
+    global client, connected_to_spacetime
+    
+    retry_count = 0
+    max_retries = 10
+    retry_delay = 5  # seconds
+    
+    # Try to resolve the hostname first
+    import socket
+    print(f"Attempting to resolve hostname: {SPACETIME_HOST}")
+    try:
+        ip_address = socket.gethostbyname(SPACETIME_HOST)
+        print(f"Resolved {SPACETIME_HOST} to IP: {ip_address}")
+    except socket.gaierror as e:
+        print(f"Warning: Could not resolve {SPACETIME_HOST}: {e}")
+    
+    try:
+        print(f"Connecting to SpacetimeDB at {SPACETIME_HOST}:{SPACETIME_PORT}")
+        
+        # Create the SpacetimeDBAsyncClient instance with module bindings
+        client = SpacetimeDBAsyncClient(autogen_package=module_bindings)
+        
+        # Set up connection URL
+        spacetime_url = f"http://{SPACETIME_HOST}:{SPACETIME_PORT}"
+        
+        # Create a task for running the client
+        # We need to create a task because run() is a blocking call that doesn't return
+        connection_task = asyncio.create_task(
+            client.run(
+                AUTH_TOKEN,
+                spacetime_url,
+                MODULE_NAME,
+                on_connect,
+                ["SELECT * FROM GameEntity"]  # SQL-style subscription
+            )
+        )
+        
+        # The connection handling will happen in the on_connect callback
+        # which will be called when the connection is established
+        
+        # Return the task so it doesn't get garbage collected
+        return connection_task
+            
+    except Exception as e:
+        print(f"Error connecting to SpacetimeDB: {e}")
+        print(f"Error details: {type(e).__name__}, {str(e)}")
+        connected_to_spacetime = False
+        client = None
+        
+        # Retry after delay
+        await asyncio.sleep(retry_delay)
+        return await connect_to_spacetimedb()
+
 async def broadcast_to_clients(message):
     """Broadcast message to all connected clients"""
     for ws in active_connections:
@@ -110,7 +145,9 @@ async def broadcast_to_clients(message):
 @app.before_serving
 async def startup():
     """Connect to SpacetimeDB when the application starts"""
-    asyncio.create_task(connect_to_spacetimedb())
+    # Create the connection task and store it
+    global connection_task
+    connection_task = await connect_to_spacetimedb()
 
 @app.websocket('/ws')
 async def ws():
@@ -122,6 +159,12 @@ async def ws():
         await current_ws.send(json.dumps({
             "type": "initial_state",
             "data": list(entities.values())
+        }))
+        
+        # Send connection status
+        await current_ws.send(json.dumps({
+            "type": "connection_status",
+            "connected": connected_to_spacetime
         }))
         
         # Handle messages from client
